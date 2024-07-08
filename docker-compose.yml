@@ -1,0 +1,35 @@
+services:
+  database:
+    container_name: ${COMPOSE_PROJECT_NAME}-database
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=${DB_DATABASE}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - ./.database:/var/lib/postgresql/data:rw
+    restart: unless-stopped
+    networks:
+      - internal
+
+  bot:
+    container_name: ${COMPOSE_PROJECT_NAME}-bot
+    build:
+      dockerfile: ./Dockerfile
+    depends_on:
+      - database
+    volumes:
+      - ./.env:/slodych/.env:ro
+      - ./logs:/slodych/logs:rw
+      - ./schema:/slodych/schema:ro
+    restart: unless-stopped
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: ${NETWORK_SUBNET}

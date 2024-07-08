@@ -1,0 +1,7 @@
+#Directories
+/.bruno/
+/.database/
+/scraper-debug/
+
+# Files
+.env

@@ -1,0 +1,11 @@
+/slodych/logs/app.log {
+    su root root
+    daily
+    rotate 7
+    create
+    dateext
+    compress
+    delaycompress
+    missingok
+    notifempty
+} 
