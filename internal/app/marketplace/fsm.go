@@ -52,6 +52,7 @@ func NewFsm() statemachine.StateMachine {
 
 		EventDelete: {
 			From: []statemachine.State{
+				statemachine.StateIdle,
 				StateListing,
 			},
 			To: StateDeleting,

@@ -38,34 +38,6 @@ func (r *PostgresRepository) FindById(id int) (Product, error) {
 	return model, nil
 }
 
-// Find all models with page navigation.
-func (r *PostgresRepository) FindAllPaginated(page int, perPage int) []Product {
-	sql := "SELECT * FROM products LIMIT @limit OFFSET @offset"
-
-	args := pgx.NamedArgs{
-		"limit":  perPage,
-		"offset": 0,
-	}
-
-	if page > 1 {
-		args["offset"] = (page - 1) * perPage
-	}
-
-	return r.fetchModels(sql, args)
-}
-
-// Get count of all models.
-func (r *PostgresRepository) GetCount() int {
-	sql := "SELECT COUNT(*) FROM products"
-
-	row := r.db.Connection.QueryRow(r.db.Context, sql)
-
-	count := 0
-	row.Scan(&count)
-
-	return count
-}
-
 // Find outdated models with page navigation.
 func (r *PostgresRepository) FindOutdatedPaginated(outdatedOffsetMinutes int, page int, perPage int) []Product {
 	currentTime := time.Now()
@@ -95,6 +67,41 @@ func (r *PostgresRepository) GetCountOutdated(outdatedOffsetMinutes int) int {
 
 	args := pgx.NamedArgs{
 		"scraped_at_outdated": helpers.TimeToDatabase(scrapedAtOutdated),
+	}
+
+	row := r.db.Connection.QueryRow(r.db.Context, sql, args)
+
+	count := 0
+	row.Scan(&count)
+
+	return count
+}
+
+// Find all models for user with page navigation.
+func (r *PostgresRepository) FindAllForUserPaginated(telegramChatId int, telegramUserId int, page int, perPage int) []Product {
+	sql := "SELECT * FROM products WHERE telegram_chat_id = @telegram_chat_id AND telegram_user_id = @telegram_user_id LIMIT @limit OFFSET @offset"
+
+	args := pgx.NamedArgs{
+		"telegram_chat_id": telegramChatId,
+		"telegram_user_id": telegramUserId,
+		"limit":            perPage,
+		"offset":           0,
+	}
+
+	if page > 1 {
+		args["offset"] = (page - 1) * perPage
+	}
+
+	return r.fetchModels(sql, args)
+}
+
+// Get count of all models for user.
+func (r *PostgresRepository) GetCountForUser(telegramChatId int, telegramUserId int) int {
+	sql := "SELECT COUNT(*) FROM products WHERE telegram_chat_id = @telegram_chat_id AND telegram_user_id = @telegram_user_id"
+
+	args := pgx.NamedArgs{
+		"telegram_chat_id": telegramChatId,
+		"telegram_user_id": telegramUserId,
 	}
 
 	row := r.db.Connection.QueryRow(r.db.Context, sql, args)

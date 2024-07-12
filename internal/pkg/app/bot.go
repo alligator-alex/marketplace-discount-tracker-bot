@@ -77,7 +77,7 @@ func (p *TrackedProduct) IsOutOfStock() bool {
 type TelegramBotApp struct {
 	bot                telegram.Bot
 	conversations      map[string]*telegram.Conversation
-	markerplaceService marketplace.Service
+	marketplaceService marketplace.Service
 	logger             logger.LoggerInterface
 	timeLocation       *time.Location
 }
@@ -101,7 +101,7 @@ func NewTelegramBotApp(token string, logger logger.LoggerInterface) TelegramBotA
 	return TelegramBotApp{
 		bot:                bot,
 		conversations:      make(map[string]*telegram.Conversation),
-		markerplaceService: marketplace.NewService(&repository, logger),
+		marketplaceService: marketplace.NewService(&repository, logger),
 		logger:             logger,
 		timeLocation:       timeLocation,
 	}
@@ -171,7 +171,7 @@ func (app *TelegramBotApp) collectGarbage() {
 
 // Scrape tracked products in background.
 func (app *TelegramBotApp) watchTrackedProducts() {
-	watcher := marketplace.NewWatcher(app.markerplaceService, app.logger)
+	watcher := marketplace.NewWatcher(app.marketplaceService, app.logger)
 
 	resultChannel := make(chan marketplace.WatcherResult)
 
@@ -207,6 +207,7 @@ func (app *TelegramBotApp) watchTrackedProducts() {
 					"Цена на товар <b>«<a href=\"", result.Original.GetUrl(), "\">", result.Original.GetTitle(), "</a>»</b> (", marketplace.GetMarketplaceName(result.Original), ")",
 					" снизилась!\n",
 					"<b>Текущая цена: ", helpers.CurrencyFormat(helpers.CurrencyToMajor(result.Scraped.GetCurrentPrice())), "</b>",
+					" (было ", helpers.CurrencyFormat(helpers.CurrencyToMajor(result.Original.GetThresholdPrice())), ")",
 				)
 			}
 
@@ -494,7 +495,7 @@ func (app *TelegramBotApp) scrapeMarketplaceUrl(conversation *telegram.Conversat
 
 	conversation.StoreContext(telegram.ConversationCtxProduct, trackedProduct)
 
-	model, err := app.markerplaceService.Create(&trackedProduct)
+	model, err := app.marketplaceService.Create(&trackedProduct)
 	if err != nil {
 		app.logger.Println("ERROR! Unable to create product:", err)
 
@@ -546,7 +547,7 @@ func (app *TelegramBotApp) showMarketplaceListing(conversation *telegram.Convers
 	}
 
 	perPage := 5
-	result := app.markerplaceService.FindAllPaginated(page, perPage)
+	result := app.marketplaceService.FindAllForUserPaginated(conversation.ChatId, conversation.User.Id, page, perPage)
 
 	if result.Total == 0 {
 		request := telegram.SendMessageRequest{
@@ -784,7 +785,7 @@ func (app *TelegramBotApp) deleteMarketplaceProduct(conversation *telegram.Conve
 		ReplyToMessageId: conversation.LastMessage.MessageId,
 	}
 
-	if product.Exists() && app.markerplaceService.Delete(product.Id) {
+	if product.Exists() && app.marketplaceService.Delete(product.Id) {
 		request.Text = helpers.ConcatStrings(
 			"Товар <b>«<a href=\"", product.Url, "\">", product.Title, "</a>»</b> (", marketplace.GetMarketplaceName(&product), ")",
 			" удалён",
@@ -804,7 +805,7 @@ func (app *TelegramBotApp) isTrackedProductContext(conversation *telegram.Conver
 
 // Find user's saved product by URL.
 func (app *TelegramBotApp) findUserProductByUrl(telegramChatId int, telegramUserId int, url string) (marketplace.Product, error) {
-	model, err := app.markerplaceService.FindForUserByUrl(telegramChatId, telegramUserId, url)
+	model, err := app.marketplaceService.FindForUserByUrl(telegramChatId, telegramUserId, url)
 	if err != nil {
 		return marketplace.Product{}, err
 	}
@@ -814,7 +815,7 @@ func (app *TelegramBotApp) findUserProductByUrl(telegramChatId int, telegramUser
 
 // Find user's saved product by slug.
 func (app *TelegramBotApp) findUserProductBySlug(telegramChatId int, telegramUserId int, slug string) (marketplace.Product, error) {
-	model, err := app.markerplaceService.FindForUserBySlug(telegramChatId, telegramUserId, slug)
+	model, err := app.marketplaceService.FindForUserBySlug(telegramChatId, telegramUserId, slug)
 	if err != nil {
 		return marketplace.Product{}, err
 	}

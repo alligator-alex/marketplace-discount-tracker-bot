@@ -22,10 +22,10 @@ type ProductDto interface {
 
 type Repository interface {
 	FindById(id int) (Product, error)
-	FindAllPaginated(page int, perPage int) []Product
-	GetCount() int
 	FindOutdatedPaginated(offsetMinutes int, page int, perPage int) []Product
 	GetCountOutdated(offsetMinutes int) int
+	FindAllForUserPaginated(telegramChatId int, telegramUserId int, page int, perPage int) []Product
+	GetCountForUser(telegramChatId int, telegramUserId int) int
 	FindForUserByUrl(telegramChatId int, telegramUserId int, url string) (Product, error)
 	FindForUserBySlug(telegramChatId int, telegramUserId int, slug string) (Product, error)
 	Delete(id int) bool
@@ -55,13 +55,13 @@ func (s *Service) FindForUserBySlug(telegramChatId int, telegramUserId int, slug
 	return s.repository.FindForUserBySlug(telegramChatId, telegramUserId, slug)
 }
 
-func (s *Service) FindAllPaginated(page int, perPage int) core.PaginatedResult {
+func (s *Service) FindAllForUserPaginated(telegramChatId int, telegramUserId int, page int, perPage int) core.PaginatedResult {
 	if perPage == 0 {
 		perPage = PerPageDefault
 	}
 
-	models := s.repository.FindAllPaginated(page, perPage)
-	count := s.repository.GetCount()
+	models := s.repository.FindAllForUserPaginated(telegramChatId, telegramUserId, page, perPage)
+	count := s.repository.GetCountForUser(telegramChatId, telegramUserId)
 
 	items := make([]any, len(models))
 	for i, model := range models {
