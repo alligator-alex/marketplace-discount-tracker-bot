@@ -4,6 +4,7 @@ import (
 	"bot/internal/app/helpers"
 	"context"
 	"log"
+	"net/url"
 	"os"
 	"sync"
 
@@ -48,7 +49,7 @@ func (db *Postgres) CloseConnection() {
 func getDsn() string {
 	return helpers.ConcatStrings(
 		"postgres://",
-		os.Getenv("DB_USERNAME"), ":", os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_USERNAME"), ":", url.QueryEscape(os.Getenv("DB_PASSWORD")),
 		"@", os.Getenv("DB_HOST"), ":", os.Getenv("DB_PORT"),
 		"/", os.Getenv("DB_DATABASE"),
 	)

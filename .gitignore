@@ -4,4 +4,5 @@
 /scraper-debug/
 
 # Files
-.env
+/.env
+/app
