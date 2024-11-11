@@ -67,6 +67,8 @@ func (p *ScrapedProduct) IsOutOfStock() bool {
 	return p.outOfStock
 }
 
+const Timeout = 60
+
 var ErrEmptyUrl = errors.New("empty marketplace url")
 var ErrUnsupported = errors.New("unsupported marketplace")
 var ErrOutOfStock error = errors.New("product out of stock")
@@ -91,7 +93,7 @@ func (s *Scraper) newBrowserInstance() (context.Context, context.CancelFunc, err
 
 	instance, cancel, err = chromedpUndetected.New(chromedpUndetected.NewConfig(
 		chromedpUndetected.WithHeadless(),
-		//chromedpUndetected.WithTimeout(time.Second*15),
+		chromedpUndetected.WithTimeout(Timeout*time.Second),
 	))
 
 	if err != nil {
@@ -202,7 +204,7 @@ func (s *Scraper) scrapeWildberries(url string) (ProductDto, error) {
 	pageContext, cancel := chromedp.NewContext(s.ctx)
 	defer cancel()
 
-	pageContext, cancel = context.WithTimeout(pageContext, 15*time.Second)
+	pageContext, cancel = context.WithTimeout(pageContext, Timeout*time.Second)
 	defer cancel()
 
 	err := s.runWithActions(
@@ -317,7 +319,7 @@ func (s *Scraper) scrapeOzon(url string) (ProductDto, error) {
 	pageContext, cancel := chromedp.NewContext(s.ctx)
 	defer cancel()
 
-	pageContext, cancel = context.WithTimeout(pageContext, 15*time.Second)
+	pageContext, cancel = context.WithTimeout(pageContext, Timeout*time.Second)
 	defer cancel()
 
 	err := s.runWithActions(

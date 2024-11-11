@@ -190,7 +190,7 @@ func (app *TelegramBotApp) watchTrackedProducts() {
 		for result := range resultChannel {
 			request := telegram.SendMessageRequest{}
 
-			if result.Scraped.IsOutOfStock() {
+			if result.Scraped.IsOutOfStock() || (result.Scraped.GetCurrentPrice() == 0) {
 				continue
 			}
 
