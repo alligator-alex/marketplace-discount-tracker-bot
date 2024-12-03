@@ -75,14 +75,16 @@ func (p *TrackedProduct) IsOutOfStock() bool {
 }
 
 type TelegramBotApp struct {
-	bot                telegram.Bot
-	conversations      map[string]*telegram.Conversation
-	marketplaceService marketplace.Service
-	logger             logger.LoggerInterface
-	timeLocation       *time.Location
+	bot                      telegram.Bot
+	conversations            map[string]*telegram.Conversation
+	marketplaceService       marketplace.Service
+	logger                   logger.LoggerInterface
+	timeLocation             *time.Location
+	scraperTimeoutInSeconds  int
+	watcherIntervalInMinutes int
 }
 
-func NewTelegramBotApp(token string, logger logger.LoggerInterface) TelegramBotApp {
+func NewTelegramBotApp(token string, logger logger.LoggerInterface, scraperTimeoutInSeconds int, watcherIntervalInMinutes int) TelegramBotApp {
 	bot, err := telegram.NewBot(token, logger)
 	if err != nil {
 		log.Fatalln(err)
@@ -99,11 +101,13 @@ func NewTelegramBotApp(token string, logger logger.LoggerInterface) TelegramBotA
 	timeLocation, _ := time.LoadLocation(timezone)
 
 	return TelegramBotApp{
-		bot:                bot,
-		conversations:      make(map[string]*telegram.Conversation),
-		marketplaceService: marketplace.NewService(&repository, logger),
-		logger:             logger,
-		timeLocation:       timeLocation,
+		bot:                      bot,
+		conversations:            make(map[string]*telegram.Conversation),
+		marketplaceService:       marketplace.NewService(&repository, logger),
+		logger:                   logger,
+		timeLocation:             timeLocation,
+		scraperTimeoutInSeconds:  scraperTimeoutInSeconds,
+		watcherIntervalInMinutes: watcherIntervalInMinutes,
 	}
 }
 
@@ -149,14 +153,14 @@ func (app *TelegramBotApp) Run() {
 func (app *TelegramBotApp) collectGarbage() {
 	const intervalInMinutes = 10
 
-	gcTicker := time.NewTicker(intervalInMinutes * time.Minute)
+	gcTicker := time.NewTicker(time.Duration(intervalInMinutes) * time.Minute)
 
 	go func() {
 		for range gcTicker.C {
 			currentTimestamp := int(time.Now().Unix())
 
 			for hash, conversation := range app.conversations {
-				conversationTimestampHanged := conversation.LastMessage.Date + intervalInMinutes*60
+				conversationTimestampHanged := conversation.LastMessage.Date + intervalInMinutes*int(time.Minute)
 
 				if conversationTimestampHanged > currentTimestamp {
 					continue
@@ -171,7 +175,7 @@ func (app *TelegramBotApp) collectGarbage() {
 
 // Scrape tracked products in background.
 func (app *TelegramBotApp) watchTrackedProducts() {
-	watcher := marketplace.NewWatcher(app.marketplaceService, app.logger)
+	watcher := marketplace.NewWatcher(app.marketplaceService, app.logger, app.scraperTimeoutInSeconds, app.watcherIntervalInMinutes)
 
 	resultChannel := make(chan marketplace.WatcherResult)
 
@@ -182,7 +186,7 @@ func (app *TelegramBotApp) watchTrackedProducts() {
 				app.logger.Println("Error while watching:", err)
 			}
 
-			time.Sleep(marketplace.WatcherIntervalInMinutes * time.Minute)
+			time.Sleep(time.Duration(app.watcherIntervalInMinutes) * time.Minute)
 		}
 	}()
 
@@ -467,7 +471,7 @@ func (app *TelegramBotApp) scrapeMarketplaceUrl(conversation *telegram.Conversat
 
 	trackedProduct := conversation.GetContext(telegram.ConversationCtxProduct).(TrackedProduct)
 
-	scraper := marketplace.NewScraper(app.logger)
+	scraper := marketplace.NewScraper(app.logger, app.scraperTimeoutInSeconds)
 	scrapedProduct, err := scraper.Scrape(trackedProduct.GetUrl())
 
 	isLoaderDone <- true

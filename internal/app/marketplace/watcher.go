@@ -5,25 +5,25 @@ import (
 	"sync"
 )
 
-const WatcherIntervalInMinutes = 30
-
 type WatcherResult struct {
 	Original ProductDto
 	Scraped  ProductDto
 }
 
 type Watcher struct {
-	scraper Scraper
-	service Service
-	logger  logger.LoggerInterface
-	locker  sync.Mutex
+	scraper           Scraper
+	service           Service
+	logger            logger.LoggerInterface
+	locker            sync.Mutex
+	intervalInMinutes int
 }
 
-func NewWatcher(service Service, logger logger.LoggerInterface) Watcher {
+func NewWatcher(service Service, logger logger.LoggerInterface, intervalInMinutes int, timeout int) Watcher {
 	return Watcher{
-		scraper: NewScraper(logger),
-		service: service,
-		logger:  logger,
+		scraper:           NewScraper(logger, timeout),
+		service:           service,
+		logger:            logger,
+		intervalInMinutes: intervalInMinutes,
 	}
 }
 
@@ -36,22 +36,39 @@ func (w *Watcher) Run(channel chan<- WatcherResult) error {
 	scrapedCount := 0
 	page := 1
 
-	for {
-		result := w.service.FindOutdatedPaginated(WatcherIntervalInMinutes, page, PerPageDefault)
+	result := w.service.FindOutdatedPaginated(w.intervalInMinutes, page, PerPageDefault)
 
-		if result.Total == 0 {
-			w.logger.Println("Watcher complete, nothing to scrape")
-			return nil
+	if result.Total == 0 {
+		w.logger.Println("Watcher complete, nothing to scrape")
+		return nil
+	}
+
+	w.logger.Println("Watching", result.Total, "item(s)")
+
+	pageIterationCount := 0
+
+	for {
+		if pageIterationCount == len(result.Items) {
+			pageIterationCount = 0
+			page++
+			result = w.service.FindOutdatedPaginated(w.intervalInMinutes, page, PerPageDefault)
 		}
 
-		page++
+		w.logger.Println("Page", page, "/", result.LastPage)
 
-		for _, item := range result.Items {
+		for i, item := range result.Items {
 			original := item.(Product)
+
+			w.logger.Println("Item", (i + 1), "-", original.GetUrl())
+
 			scraped, err := w.scraper.Scrape(original.Url)
 
 			if err != nil && err != ErrOutOfStock {
+				pageIterationCount++
+				scrapedCount++
+
 				w.logger.Println("Unable to scrape:", err)
+
 				continue
 			}
 
@@ -72,6 +89,7 @@ func (w *Watcher) Run(channel chan<- WatcherResult) error {
 				Scraped:  scraped,
 			}
 
+			pageIterationCount++
 			scrapedCount++
 		}
 

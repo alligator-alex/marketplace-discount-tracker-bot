@@ -37,7 +37,7 @@ Allows you to keep track of discounts on the desired products, as well as their 
 To get started, you need to add a product to the bot.  
 Enter `/trackproduct` command and then send the desired product URL to save it.
 
-The bot will automatically check your saved URLs every 30 minutes in the background.  
+The bot will automatically check your saved URLs every 60 minutes in the background (interval could be changed in .env-file).  
 If the price of any product has dropped or it's back in stock, the bot will send you a corresponding message.
 
 To view the list of your tracked products, use the `/listproducts` command.  

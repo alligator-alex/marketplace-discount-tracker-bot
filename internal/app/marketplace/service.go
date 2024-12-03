@@ -22,8 +22,8 @@ type ProductDto interface {
 
 type Repository interface {
 	FindById(id int) (Product, error)
-	FindOutdatedPaginated(offsetMinutes int, page int, perPage int) []Product
-	GetCountOutdated(offsetMinutes int) int
+	FindOutdatedPaginated(offsetInMinutes int, page int, perPage int) []Product
+	GetCountOutdated(offsetInMinutes int) int
 	FindAllForUserPaginated(telegramChatId int, telegramUserId int, page int, perPage int) []Product
 	GetCountForUser(telegramChatId int, telegramUserId int) int
 	FindForUserByUrl(telegramChatId int, telegramUserId int, url string) (Product, error)
@@ -71,13 +71,13 @@ func (s *Service) FindAllForUserPaginated(telegramChatId int, telegramUserId int
 	return core.NewPaginatedResult(items, page, perPage, count)
 }
 
-func (s *Service) FindOutdatedPaginated(outdatedOffsetMinutes int, page int, perPage int) core.PaginatedResult {
+func (s *Service) FindOutdatedPaginated(outdatedOffsetInMinutes int, page int, perPage int) core.PaginatedResult {
 	if perPage == 0 {
 		perPage = PerPageDefault
 	}
 
-	models := s.repository.FindOutdatedPaginated(outdatedOffsetMinutes, page, perPage)
-	count := s.repository.GetCountOutdated(outdatedOffsetMinutes)
+	models := s.repository.FindOutdatedPaginated(outdatedOffsetInMinutes, page, perPage)
+	count := s.repository.GetCountOutdated(outdatedOffsetInMinutes)
 
 	items := make([]any, len(models))
 	for i, model := range models {

@@ -1,8 +1,8 @@
 #Directories
 /.bruno/
 /.database/
-/scraper-debug/
+/.debug/
+/build/
 
 # Files
 /.env
-/app

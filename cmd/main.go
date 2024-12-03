@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -55,9 +56,20 @@ func runConsoleApp() {
 }
 
 func runBotApp() {
-	logger := logger.NewFileLogger("app.log", false)
 	token := os.Getenv("TELEGRAM_BOT_TOKEN")
 
-	app := app.NewTelegramBotApp(token, logger)
+	logger := logger.NewFileLogger("app.log", false)
+
+	scraperTimeoutInSeconds, err := strconv.Atoi(os.Getenv("SCRAPER_TIMEOUT_IN_SECONDS"))
+	if err != nil {
+		scraperTimeoutInSeconds = 60
+	}
+
+	watcherIntervalInMinutes, err := strconv.Atoi(os.Getenv("WATCHER_INTERVAL_IN_MINUTES"))
+	if err != nil {
+		watcherIntervalInMinutes = 60
+	}
+
+	app := app.NewTelegramBotApp(token, logger, scraperTimeoutInSeconds, watcherIntervalInMinutes)
 	app.Run()
 }

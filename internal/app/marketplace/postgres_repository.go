@@ -39,11 +39,15 @@ func (r *PostgresRepository) FindById(id int) (Product, error) {
 }
 
 // Find outdated models with page navigation.
-func (r *PostgresRepository) FindOutdatedPaginated(outdatedOffsetMinutes int, page int, perPage int) []Product {
+func (r *PostgresRepository) FindOutdatedPaginated(offsetInMinutes int, page int, perPage int) []Product {
 	currentTime := time.Now()
-	scrapedAtOutdated := currentTime.Add(time.Duration(-outdatedOffsetMinutes) * time.Minute)
+	scrapedAtOutdated := currentTime.Add(time.Duration(-offsetInMinutes) * time.Minute)
 
-	sql := "SELECT * FROM products WHERE scraped_at <= @scraped_at_outdated LIMIT @limit OFFSET @offset"
+	sql := "SELECT * FROM products" +
+		" WHERE scraped_at <= @scraped_at_outdated" +
+		" ORDER BY created_at DESC" +
+		" LIMIT @limit" +
+		" OFFSET @offset"
 
 	args := pgx.NamedArgs{
 		"scraped_at_outdated": helpers.TimeToDatabase(scrapedAtOutdated),
@@ -59,9 +63,9 @@ func (r *PostgresRepository) FindOutdatedPaginated(outdatedOffsetMinutes int, pa
 }
 
 // Get count of outdated models.
-func (r *PostgresRepository) GetCountOutdated(outdatedOffsetMinutes int) int {
+func (r *PostgresRepository) GetCountOutdated(offsetInMinutes int) int {
 	currentTime := time.Now()
-	scrapedAtOutdated := currentTime.Add(time.Duration(-outdatedOffsetMinutes) * time.Minute)
+	scrapedAtOutdated := currentTime.Add(time.Duration(-offsetInMinutes) * time.Minute)
 
 	sql := "SELECT COUNT(*) FROM products WHERE scraped_at <= @scraped_at_outdated"
 
@@ -79,7 +83,11 @@ func (r *PostgresRepository) GetCountOutdated(outdatedOffsetMinutes int) int {
 
 // Find all models for user with page navigation.
 func (r *PostgresRepository) FindAllForUserPaginated(telegramChatId int, telegramUserId int, page int, perPage int) []Product {
-	sql := "SELECT * FROM products WHERE telegram_chat_id = @telegram_chat_id AND telegram_user_id = @telegram_user_id LIMIT @limit OFFSET @offset"
+	sql := "SELECT * FROM products" +
+		" WHERE telegram_chat_id = @telegram_chat_id AND telegram_user_id = @telegram_user_id" +
+		" ORDER BY created_at DESC" +
+		" LIMIT @limit" +
+		" OFFSET @offset"
 
 	args := pgx.NamedArgs{
 		"telegram_chat_id": telegramChatId,

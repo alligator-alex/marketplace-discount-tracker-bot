@@ -67,21 +67,25 @@ func (p *ScrapedProduct) IsOutOfStock() bool {
 	return p.outOfStock
 }
 
-const Timeout = 60
-
 var ErrEmptyUrl = errors.New("empty marketplace url")
 var ErrUnsupported = errors.New("unsupported marketplace")
 var ErrOutOfStock error = errors.New("product out of stock")
 var ErrNotFound error = errors.New("product not found")
 
 type Scraper struct {
-	ctx    context.Context
-	logger logger.LoggerInterface
+	ctx              context.Context
+	logger           logger.LoggerInterface
+	timeoutInSeconds int
 }
 
-func NewScraper(logger logger.LoggerInterface) Scraper {
+func NewScraper(logger logger.LoggerInterface, timeoutInSeconds int) Scraper {
+	if timeoutInSeconds <= 0 {
+		timeoutInSeconds = 60
+	}
+
 	return Scraper{
-		logger: logger,
+		logger:           logger,
+		timeoutInSeconds: timeoutInSeconds,
 	}
 }
 
@@ -93,7 +97,7 @@ func (s *Scraper) newBrowserInstance() (context.Context, context.CancelFunc, err
 
 	instance, cancel, err = chromedpUndetected.New(chromedpUndetected.NewConfig(
 		chromedpUndetected.WithHeadless(),
-		chromedpUndetected.WithTimeout(Timeout*time.Second),
+		chromedpUndetected.WithTimeout(time.Duration(s.timeoutInSeconds)*time.Second),
 	))
 
 	if err != nil {
@@ -204,7 +208,7 @@ func (s *Scraper) scrapeWildberries(url string) (ProductDto, error) {
 	pageContext, cancel := chromedp.NewContext(s.ctx)
 	defer cancel()
 
-	pageContext, cancel = context.WithTimeout(pageContext, Timeout*time.Second)
+	pageContext, cancel = context.WithTimeout(pageContext, time.Duration(s.timeoutInSeconds)*time.Second)
 	defer cancel()
 
 	err := s.runWithActions(
@@ -304,6 +308,8 @@ func (s *Scraper) scrapeWildberries(url string) (ProductDto, error) {
 		return &ScrapedProduct{}, err
 	}
 
+	s.logger.Println("Done scraping Wildberries URL:", url)
+
 	return product, err
 }
 
@@ -319,13 +325,18 @@ func (s *Scraper) scrapeOzon(url string) (ProductDto, error) {
 	pageContext, cancel := chromedp.NewContext(s.ctx)
 	defer cancel()
 
-	pageContext, cancel = context.WithTimeout(pageContext, Timeout*time.Second)
+	pageContext, cancel = context.WithTimeout(pageContext, time.Duration(s.timeoutInSeconds)*time.Second)
 	defer cancel()
 
 	err := s.runWithActions(
 		pageContext,
 		chromedp.Navigate(url),
-		chromedp.WaitVisible("[data-widget=\"container\"]"),
+
+		// try to bypass "access denied" page
+		chromedp.WaitReady("[id=\"reload-button\"]"),
+		chromedp.Click("[id=\"reload-button\"]"),
+
+		chromedp.WaitReady("[data-widget=\"container\"]"),
 
 		chromedp.QueryAfter("[data-widget=\"container\"]", func(ctx context.Context, id runtime.ExecutionContextID, nodes ...*cdp.Node) error {
 			// check if error page
@@ -399,6 +410,8 @@ func (s *Scraper) scrapeOzon(url string) (ProductDto, error) {
 		s.logger.Println("Unknown error while scraping Ozon URL:", err)
 		return &ScrapedProduct{}, err
 	}
+
+	s.logger.Println("Done scraping Ozon URL:", url)
 
 	return product, err
 }
