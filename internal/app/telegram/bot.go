@@ -69,7 +69,7 @@ func (b *Bot) getMe() (BotUser, error) {
 	var result BotUser
 
 	endpoint := b.getEndpoint("getMe", nil)
-	response, err := b.sendRequest(endpoint, nil)
+	response, err := b.sendRequest(endpoint, nil, false)
 	if err != nil {
 		return result, err
 	}
@@ -91,7 +91,7 @@ func (b *Bot) getUpdates(offset int) ([]Update, error) {
 		Timeout: 20,
 	})
 
-	response, err := b.sendRequest(endpoint, nil)
+	response, err := b.sendRequest(endpoint, nil, true)
 
 	if err != nil {
 		return result, err
@@ -145,7 +145,7 @@ func (b *Bot) SendMessage(toChatId int, request SendMessageRequest) (Message, er
 		ChatId: toChatId,
 	})
 
-	response, err := b.sendRequest(endpoint, &request)
+	response, err := b.sendRequest(endpoint, &request, false)
 
 	if err != nil {
 		return result, err
@@ -165,7 +165,7 @@ func (b *Bot) AnswerCallbackQuery(callbackQueryId string) {
 		CallbackQueryId: callbackQueryId,
 	})
 
-	b.sendRequest(endpoint, nil)
+	b.sendRequest(endpoint, nil, false)
 }
 
 // Edit message.
@@ -176,7 +176,7 @@ func (b *Bot) EditMessage(chatId int, messageId int, request EditMessageRequest)
 		MessageId: messageId,
 	})
 
-	b.sendRequest(endpoint, &request)
+	b.sendRequest(endpoint, &request, false)
 }
 
 func (b *Bot) SetMessageReaction(toChatId int, toMessageId int, emoji Emoji) {
@@ -189,7 +189,7 @@ func (b *Bot) SetMessageReaction(toChatId int, toMessageId int, emoji Emoji) {
 		Emoji: emoji,
 	}
 
-	b.sendRequest(endpoint, &request)
+	b.sendRequest(endpoint, &request, false)
 }
 
 // Get method endpoint with optional URL parameters.
@@ -204,7 +204,7 @@ func (b *Bot) getEndpoint(method string, params UrlParams) string {
 }
 
 // Send request to endpoint with optional data.
-func (b *Bot) sendRequest(endpoint string, data RequestData) (Response, error) {
+func (b *Bot) sendRequest(endpoint string, data RequestData, skipLogMessage bool) (Response, error) {
 	var httpMethod string
 
 	body := bytes.NewBuffer(nil)
@@ -220,11 +220,15 @@ func (b *Bot) sendRequest(endpoint string, data RequestData) (Response, error) {
 
 		body.Write(jsonData)
 
-		b.logger.Println("Sending POST request to", endpoint, "with data", body)
+		if !skipLogMessage {
+			b.logger.Println("Sending POST request to", endpoint, "with data", body)
+		}
 	} else {
 		httpMethod = http.MethodGet
 
-		b.logger.Println("Sending GET request to", endpoint)
+		if !skipLogMessage {
+			b.logger.Println("Sending GET request to", endpoint)
+		}
 	}
 
 	// don't expose token in logs

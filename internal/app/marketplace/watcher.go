@@ -54,6 +54,10 @@ func (w *Watcher) Run(channel chan<- WatcherResult) error {
 			result = w.service.FindOutdatedPaginated(w.intervalInMinutes, page, PerPageDefault)
 		}
 
+		if len(result.Items) == 0 {
+			break
+		}
+
 		w.logger.Println("Page", page, "/", result.LastPage)
 
 		for i, item := range result.Items {
