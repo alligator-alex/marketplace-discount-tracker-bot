@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"math/rand"
 	"regexp"
 	"strconv"
 	"strings"
@@ -67,6 +68,54 @@ func (p *ScrapedProduct) IsOutOfStock() bool {
 	return p.outOfStock
 }
 
+type Viewport struct {
+	width  int
+	height int
+}
+
+func (v *Viewport) GetWidth() int {
+	return v.width
+}
+
+func (v *Viewport) GetHeight() int {
+	return v.height
+}
+
+var viewports = []Viewport{
+	{1366, 615},
+	{1440, 765},
+	{1600, 767},
+	{1920, 947},
+}
+
+var viewportChromeVersions = []string{
+	"125.0.6422.76",
+	"128.0.6613.137",
+	"129.0.6668.58",
+	"129.0.6668.89",
+	"130.0.6723.91",
+	"130.0.6723.116",
+	"131.0.6778.108",
+	"131.0.6778.139",
+}
+
+var viewportOsVersions = []string{
+	"Macintosh; Intel Mac OS X 10_10_0",
+	"Macintosh; Intel Mac OS X 10_11_6",
+	"Macintosh; Intel Mac OS X 11_6_6",
+	"Macintosh; Intel Mac OS X 11_7_4",
+	"Macintosh; Intel Mac OS X 12_2_1",
+	"Macintosh; Intel Mac OS X 12_6_4",
+	"Macintosh; Intel Mac OS X 13_0",
+	"Macintosh; Intel Mac OS X 13_2_1",
+
+	"Windows NT 10.0; Win64; x64",
+	"Windows NT 6.1; WOW64",
+	"Windows NT 6.1; Win64; x64",
+
+	"X11; Linux x86_64",
+}
+
 var ErrEmptyUrl = errors.New("empty marketplace url")
 var ErrUnsupported = errors.New("unsupported marketplace")
 var ErrOutOfStock error = errors.New("product out of stock")
@@ -105,6 +154,19 @@ func (s *Scraper) newBrowserInstance() (context.Context, context.CancelFunc, err
 	}
 
 	return instance, cancel, nil
+}
+
+// Get random viewport.
+func (s *Scraper) randomViewport() Viewport {
+	return viewports[rand.Intn(len(viewports))]
+}
+
+// Get random user-agent.
+func (s *Scraper) randomUserAgent() string {
+	os := viewportOsVersions[rand.Intn(len(viewportOsVersions))]
+	chromeVersion := viewportChromeVersions[rand.Intn(len(viewportChromeVersions))]
+
+	return helpers.ConcatStrings("Mozilla/5.0 (", os, ") AppleWebKit/537.36 (KHTML, like Gecko) Chrome/", chromeVersion, " Safari/537.36")
 }
 
 // Scrape target URL.
@@ -332,10 +394,6 @@ func (s *Scraper) scrapeOzon(url string) (ProductDto, error) {
 		pageContext,
 		chromedp.Navigate(url),
 
-		// try to bypass "access denied" page
-		chromedp.WaitReady("[id=\"reload-button\"]"),
-		chromedp.Click("[id=\"reload-button\"]"),
-
 		chromedp.WaitReady("[data-widget=\"container\"]"),
 
 		chromedp.QueryAfter("[data-widget=\"container\"]", func(ctx context.Context, id runtime.ExecutionContextID, nodes ...*cdp.Node) error {
@@ -418,7 +476,18 @@ func (s *Scraper) scrapeOzon(url string) (ProductDto, error) {
 
 // Run browser with actions to scrape product.
 func (s *Scraper) runWithActions(ctx context.Context, actions ...chromedp.Action) error {
-	return chromedp.Run(ctx, actions...)
+	userAgent := s.randomUserAgent()
+	viewport := s.randomViewport()
+
+	actions = append([]chromedp.Action{
+		chromedpUndetected.UserAgentOverride(userAgent),
+		chromedp.EmulateViewport(int64(viewport.GetWidth()), int64(viewport.GetHeight())),
+	}, actions...)
+
+	return chromedp.Run(
+		ctx,
+		actions...,
+	)
 }
 
 // Check if error is unknown to the system.
