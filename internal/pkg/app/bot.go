@@ -192,7 +192,11 @@ func (app *TelegramBotApp) watchTrackedProducts() {
 
 	go func() {
 		for result := range resultChannel {
-			request := telegram.SendMessageRequest{}
+			request := telegram.SendMessageRequest{
+				LinkPreviewOptions: telegram.LinkPreviewOptions{
+					IsDisabled: true,
+				},
+			}
 
 			if result.Scraped.IsOutOfStock() || (result.Scraped.GetCurrentPrice() == 0) {
 				continue
@@ -201,22 +205,33 @@ func (app *TelegramBotApp) watchTrackedProducts() {
 			if result.Original.IsOutOfStock() && !result.Scraped.IsOutOfStock() {
 				// in stock again
 				request.Text = helpers.ConcatStrings(
-					"Товар <b>«<a href=\"", result.Original.GetUrl(), "\">", result.Original.GetTitle(), "</a>»</b> (", marketplace.GetMarketplaceName(result.Original), ")",
-					" снова в продаже!\n",
-					"<b>Текущая цена: ", helpers.CurrencyFormat(helpers.CurrencyToMajor(result.Scraped.GetCurrentPrice())), "</b>",
+					"Товар снова в продаже! ", string(telegram.EmojiParty), "\n\n",
+					"<b><a href=\"", result.Original.GetUrl(), "\">", result.Original.GetTitle(), "</a></b> (", marketplace.GetMarketplaceName(result.Original), ")\n\n",
+					"Текущая цена: <b>", helpers.CurrencyFormat(helpers.CurrencyToMajor(result.Scraped.GetCurrentPrice())), "</b>",
 				)
 			} else if result.Original.GetThresholdPrice() > result.Scraped.GetCurrentPrice() {
 				// price is now lower
 				request.Text = helpers.ConcatStrings(
-					"Цена на товар <b>«<a href=\"", result.Original.GetUrl(), "\">", result.Original.GetTitle(), "</a>»</b> (", marketplace.GetMarketplaceName(result.Original), ")",
-					" снизилась!\n",
-					"<b>Текущая цена: ", helpers.CurrencyFormat(helpers.CurrencyToMajor(result.Scraped.GetCurrentPrice())), "</b>",
-					" (было ", helpers.CurrencyFormat(helpers.CurrencyToMajor(result.Original.GetThresholdPrice())), ")",
+					"Снизилась цена на товар! ", string(telegram.EmojiMoneyMouthFace), "\n\n",
+					"<b><a href=\"", result.Original.GetUrl(), "\">", result.Original.GetTitle(), "</a></b> (", marketplace.GetMarketplaceName(result.Original), ")\n\n",
+					"Новая цена: <b>", helpers.CurrencyFormat(helpers.CurrencyToMajor(result.Scraped.GetCurrentPrice())), "</b>\n",
+					"Старая цена: <s>", helpers.CurrencyFormat(helpers.CurrencyToMajor(result.Original.GetThresholdPrice())), "</s>",
 				)
 			}
 
 			if request.Text == "" {
 				continue
+			}
+
+			request.ReplyMarkup = telegram.InlineKeyboardMarkup{
+				Keyboard: [][]telegram.InlineKeyboardButton{
+					{
+						{
+							Text: "Перейти к товару",
+							Url:  result.Original.GetUrl(),
+						},
+					},
+				},
 			}
 
 			_, err := app.bot.SendMessage(result.Original.GetTelegramChatId(), request)
@@ -442,7 +457,11 @@ func (app *TelegramBotApp) scrapeMarketplaceUrl(conversation *telegram.Conversat
 		return
 	}
 
-	request := telegram.EditMessageRequest{}
+	request := telegram.EditMessageRequest{
+		LinkPreviewOptions: telegram.LinkPreviewOptions{
+			IsDisabled: true,
+		},
+	}
 
 	loaderDotsCount := 3
 	loaderTicker := time.NewTicker(time.Second)
@@ -511,15 +530,15 @@ func (app *TelegramBotApp) scrapeMarketplaceUrl(conversation *telegram.Conversat
 
 	if model.OutOfStock {
 		request.Text = helpers.ConcatStrings(
-			"Нет в наличии ", string(telegram.EmojiNeutralFace), "\n\n",
-			"Я сообщу, когда товар <b>«<a href=\"", model.Url, "\">", model.Title, "</a>»</b> (", marketplace.GetMarketplaceName(&model), ")",
-			" снова поступит в продажу",
+			"Начал отслеживать товар, но его пока нет в наличии ", string(telegram.EmojiWhiteFrowningFace), "\n\n",
+			"<b><a href=\"", model.Url, "\">", model.Title, "</a></b> (", marketplace.GetMarketplaceName(&model), ")\n\n",
+			"Сообщу, когда поступит в продажу",
 		)
 	} else {
 		request.Text = helpers.ConcatStrings(
-			"Окей ", string(telegram.EmojiOkHand), "\n\n",
-			"Я сообщу, когда цена на товар <b>«<a href=\"", model.Url, "\">", model.Title, "</a>»</b> (", marketplace.GetMarketplaceName(&model), ")",
-			" станет ниже <b>", helpers.CurrencyFormat(helpers.CurrencyToMajor(model.ThresholdPrice)), "</b>",
+			"Начал отслеживать товар ", string(telegram.EmojiOkHand), "\n\n",
+			"<b><a href=\"", model.Url, "\">", model.Title, "</a></b> (", marketplace.GetMarketplaceName(&model), ")\n\n",
+			"Сообщу, когда цена станет ниже <b>", helpers.CurrencyFormat(helpers.CurrencyToMajor(model.ThresholdPrice)), "</b>",
 		)
 	}
 
@@ -578,25 +597,33 @@ func (app *TelegramBotApp) showMarketplaceListing(conversation *telegram.Convers
 		}
 
 		itemMessage := helpers.ConcatStrings(
-			"<b>", strconv.Itoa(position), ". «<a href=\"", model.Url, "\">", model.Title, "</a>»</b>",
+			"<b>", strconv.Itoa(position), ". <a href=\"", model.Url, "\">", model.Title, "</a></b>",
 			" (", marketplace.GetMarketplaceName(&model), ")",
 		)
 
 		if model.OutOfStock {
 			itemMessage = helpers.ConcatStrings(
-				itemMessage, "\n",
-				"<b>Нет в наличии</b>",
-				" (", helpers.TimeToHuman(model.ScrapedAt.In(app.timeLocation)), ")",
+				itemMessage,
+				"\n",
+				"• <b>Нет в наличии</b>",
+				" (<i>", helpers.TimeToHuman(model.ScrapedAt.In(app.timeLocation)), "</i>)",
 			)
 		} else {
 			itemMessage = helpers.ConcatStrings(
-				itemMessage, "\n",
-				"<b>Текущая цена: ", helpers.CurrencyFormat(helpers.CurrencyToMajor(model.CurrentPrice)), "</b>",
-				" (", helpers.TimeToHuman(model.ScrapedAt.In(app.timeLocation)), ")",
+				itemMessage,
+				"\n",
+				"• <b>", helpers.CurrencyFormat(helpers.CurrencyToMajor(model.CurrentPrice)), "</b>",
+				" (<i>", helpers.TimeToHuman(model.ScrapedAt.In(app.timeLocation)), "</i>)",
 			)
 		}
 
-		itemMessage = helpers.ConcatStrings(itemMessage, "\n", "<i>Удалить</i>: ", telegram.CommandPrefixDeleteProduct, model.Slug)
+		itemMessage = helpers.ConcatStrings(
+			itemMessage,
+			"\n",
+			"• Удалить: ",
+			telegram.CommandPrefixDeleteProduct,
+			model.Slug,
+		)
 
 		listMessage = helpers.ConcatStrings(listMessage, itemMessage, "\n\n")
 	}
@@ -613,6 +640,9 @@ func (app *TelegramBotApp) showMarketplaceListing(conversation *telegram.Convers
 	if conversation.LastCallbackQueryId != "" {
 		request := telegram.EditMessageRequest{
 			Text: listMessage,
+			LinkPreviewOptions: telegram.LinkPreviewOptions{
+				IsDisabled: true,
+			},
 		}
 
 		if len(pageNavKeyboard[0]) > 0 {
@@ -632,6 +662,9 @@ func (app *TelegramBotApp) showMarketplaceListing(conversation *telegram.Convers
 	request := telegram.SendMessageRequest{
 		Text:             listMessage,
 		ReplyToMessageId: conversation.LastMessage.MessageId,
+		LinkPreviewOptions: telegram.LinkPreviewOptions{
+			IsDisabled: true,
+		},
 	}
 
 	if len(pageNavKeyboard[0]) > 0 {
@@ -744,20 +777,20 @@ func (app *TelegramBotApp) confirmMarketplaceProductDelete(conversation *telegra
 
 	if model.Exists() {
 		request.Text = helpers.ConcatStrings(
-			"Точно хочешь удалить товар",
-			" <b>«<a href=\"", model.Url, "\">", model.Title, "</a>»</b>",
-			" (", marketplace.GetMarketplaceName(&model), ")", "?",
+			"Точно хочешь удалить товар?\n\n",
+			"<b><a href=\"", model.Url, "\">", model.Title, "</a></b>",
+			" (", marketplace.GetMarketplaceName(&model), ")",
 		)
 
 		request.ReplyMarkup = telegram.InlineKeyboardMarkup{
 			Keyboard: [][]telegram.InlineKeyboardButton{
 				{
 					{
-						Text:         "Да",
+						Text:         helpers.ConcatStrings(string(telegram.EmojiWhiteCheckMark), " Да"),
 						CallbackData: telegram.CommandYes,
 					},
 					{
-						Text:         "Нет",
+						Text:         helpers.ConcatStrings(string(telegram.EmojiX), " Нет"),
 						CallbackData: telegram.CommandNo,
 					},
 				},
@@ -787,12 +820,15 @@ func (app *TelegramBotApp) deleteMarketplaceProduct(conversation *telegram.Conve
 
 	request := telegram.SendMessageRequest{
 		ReplyToMessageId: conversation.LastMessage.MessageId,
+		LinkPreviewOptions: telegram.LinkPreviewOptions{
+			IsDisabled: true,
+		},
 	}
 
 	if product.Exists() && app.marketplaceService.Delete(product.Id) {
 		request.Text = helpers.ConcatStrings(
-			"Товар <b>«<a href=\"", product.Url, "\">", product.Title, "</a>»</b> (", marketplace.GetMarketplaceName(&product), ")",
-			" удалён",
+			"Перестал отслеживать товар\n\n",
+			"<b><a href=\"", product.Url, "\">", product.Title, "</a></b> (", marketplace.GetMarketplaceName(&product), ")",
 		)
 	} else {
 		request.Text = "Нет такого товара"

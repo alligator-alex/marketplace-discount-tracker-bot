@@ -1,8 +1,8 @@
 package helpers
 
 import (
-	"fmt"
 	"math"
+	"strconv"
 )
 
 const (
@@ -24,8 +24,7 @@ func CurrencyToMajor(minorValue int) float64 {
 
 // Format major currency as string (e.g. 220.50000 to "220.50 ₽").
 func CurrencyFormat(majorValue float64) string {
-	value := math.Round(majorValue*100) / 100
-	result := fmt.Sprintf("%.2f", value)
+	result := strconv.FormatFloat(majorValue, 'f', -1, 64)
 
 	return ConcatStrings(result, "\u00A0", RubleSymbol)
 }

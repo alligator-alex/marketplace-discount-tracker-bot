@@ -59,5 +59,12 @@ type InlineKeyboardMarkup struct {
 // https://core.telegram.org/bots/api#inlinekeyboardbutton
 type InlineKeyboardButton struct {
 	Text         string `json:"text"`
+	Url          string `json:"url"`
 	CallbackData string `json:"callback_data"`
+}
+
+// https://core.telegram.org/bots/api#linkpreviewoptions
+type LinkPreviewOptions struct {
+	IsDisabled       bool `json:"is_disabled"`
+	PreferSmallMedia bool `json:"prefer_small_media"`
 }

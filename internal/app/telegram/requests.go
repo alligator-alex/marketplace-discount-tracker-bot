@@ -9,18 +9,17 @@ type JsonObject map[string]any
 // Request data for "sendMessage" method.
 // https://core.telegram.org/bots/api#sendmessage
 type SendMessageRequest struct {
-	ReplyToMessageId int
-	Text             string
-	ReplyMarkup      InlineKeyboardMarkup
+	ReplyToMessageId   int
+	Text               string
+	ReplyMarkup        InlineKeyboardMarkup
+	LinkPreviewOptions LinkPreviewOptions
 }
 
 func (r *SendMessageRequest) ToJson() ([]byte, error) {
 	data := JsonObject{
-		"text":       r.Text,
-		"parse_mode": parseModeHtml,
-		"link_preview_options": JsonObject{
-			"is_disabled": true,
-		},
+		"text":                 r.Text,
+		"parse_mode":           parseModeHtml,
+		"link_preview_options": r.LinkPreviewOptions,
 	}
 
 	if r.ReplyToMessageId > 0 {
@@ -39,17 +38,16 @@ func (r *SendMessageRequest) ToJson() ([]byte, error) {
 // Request data for "editMessageText" method.
 // https://core.telegram.org/bots/api#editmessagetext
 type EditMessageRequest struct {
-	Text        string
-	ReplyMarkup InlineKeyboardMarkup
+	Text               string
+	ReplyMarkup        InlineKeyboardMarkup
+	LinkPreviewOptions LinkPreviewOptions
 }
 
 func (r *EditMessageRequest) ToJson() ([]byte, error) {
 	data := JsonObject{
-		"text":       r.Text,
-		"parse_mode": parseModeHtml,
-		"link_preview_options": JsonObject{
-			"is_disabled": true,
-		},
+		"text":                 r.Text,
+		"parse_mode":           parseModeHtml,
+		"link_preview_options": r.LinkPreviewOptions,
 	}
 
 	if len(r.ReplyMarkup.Keyboard) > 0 {

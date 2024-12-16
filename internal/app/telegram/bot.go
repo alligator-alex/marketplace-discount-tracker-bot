@@ -16,10 +16,15 @@ import (
 type Emoji string
 
 const (
-	EmojiOkHand      Emoji = "👌"
-	EmojiHighVoltage Emoji = "⚡"
-	EmojiThumbsUp    Emoji = "👍"
-	EmojiNeutralFace Emoji = "😐"
+	EmojiOkHand            Emoji = "👌"
+	EmojiHighVoltage       Emoji = "⚡"
+	EmojiThumbsUp          Emoji = "👍"
+	EmojiNeutralFace       Emoji = "😐"
+	EmojiMoneyMouthFace    Emoji = "🤑"
+	EmojiParty             Emoji = "🥳"
+	EmojiWhiteFrowningFace Emoji = "☹️"
+	EmojiWhiteCheckMark    Emoji = "✅"
+	EmojiX                 Emoji = "❌"
 )
 
 type UrlParams interface {
