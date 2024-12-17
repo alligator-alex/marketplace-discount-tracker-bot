@@ -194,7 +194,18 @@ func (app *TelegramBotApp) watchTrackedProducts() {
 		for result := range resultChannel {
 			request := telegram.SendMessageRequest{
 				LinkPreviewOptions: telegram.LinkPreviewOptions{
-					IsDisabled: true,
+					PreferSmallMedia: true,
+					Url:              result.Original.GetUrl(),
+				},
+				ReplyMarkup: telegram.InlineKeyboardMarkup{
+					Keyboard: [][]telegram.InlineKeyboardButton{
+						{
+							{
+								Text: "Перейти к товару",
+								Url:  result.Original.GetUrl(),
+							},
+						},
+					},
 				},
 			}
 
@@ -221,17 +232,6 @@ func (app *TelegramBotApp) watchTrackedProducts() {
 
 			if request.Text == "" {
 				continue
-			}
-
-			request.ReplyMarkup = telegram.InlineKeyboardMarkup{
-				Keyboard: [][]telegram.InlineKeyboardButton{
-					{
-						{
-							Text: "Перейти к товару",
-							Url:  result.Original.GetUrl(),
-						},
-					},
-				},
 			}
 
 			_, err := app.bot.SendMessage(result.Original.GetTelegramChatId(), request)

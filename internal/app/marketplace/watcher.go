@@ -79,11 +79,14 @@ func (w *Watcher) Run(channel chan<- WatcherResult) error {
 			new := original
 
 			new.ScrapedAt = scraped.GetScrapedAt()
-			new.CurrentPrice = scraped.GetCurrentPrice()
 			new.OutOfStock = scraped.IsOutOfStock()
 
-			if (scraped.GetCurrentPrice() > 0) && (new.GetThresholdPrice() != scraped.GetCurrentPrice()) {
-				new.ThresholdPrice = scraped.GetCurrentPrice()
+			if scraped.GetCurrentPrice() > 0 {
+				new.CurrentPrice = scraped.GetCurrentPrice()
+
+				if new.GetThresholdPrice() != scraped.GetCurrentPrice() {
+					new.ThresholdPrice = scraped.GetCurrentPrice()
+				}
 			}
 
 			w.service.Update(original.Id, &new)

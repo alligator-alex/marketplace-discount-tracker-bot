@@ -65,6 +65,7 @@ type InlineKeyboardButton struct {
 
 // https://core.telegram.org/bots/api#linkpreviewoptions
 type LinkPreviewOptions struct {
-	IsDisabled       bool `json:"is_disabled"`
-	PreferSmallMedia bool `json:"prefer_small_media"`
+	IsDisabled       bool   `json:"is_disabled"`
+	PreferSmallMedia bool   `json:"prefer_small_media"`
+	Url              string `json:"url"`
 }
